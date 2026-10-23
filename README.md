@@ -18,6 +18,9 @@
 | **Repository** | [vtu-hc-qubitcrew](https://github.com/vtu-qiskit-fall-fest-2026/vtu-hc-qubitcrew.git) |
 | **Organisation** | [vtu-qiskit-fall-fest-2026](https://github.com/vtu-qiskit-fall-fest-2026) |
 | **Event** | VTU-QFF Hackathon — VTU-Qiskit Fall Fest 2026 |
+| **Live demo** | [qubitcrew-dd.streamlit.app](https://qubitcrew-dd.streamlit.app/) |
+| **Demo video** | See [YouTube_Demo_Link.md](YouTube_Demo_Link.md) |
+| **Presentation** | [docs/QubitCrew_VTU-QFF-HC-0184.pptx](docs/QubitCrew_VTU-QFF-HC-0184.pptx) |
 
 </div>
 
@@ -68,7 +71,19 @@
 
 **Key idea:** Identical DD trains on coupled neighbours leave ZZ crosstalk intact (the two sign flips cancel in the product), while **staggered** trains refocus it. The injector picks pulse placement per window by minimising a ZZ-frame cost, and "no DD" is always a candidate, so auto-DD cannot hurt on the device model.
 
-**Why this works:** It is schedule-aware: pulses go only where a window is long enough to pay for them and where a neighbour's timing makes staggering useful. Results (simulated noisy device, 6 workloads): auto-DD cuts infidelity `|1-F|` by about 42 % on average (Qiskit's DD: about 38 %), with larger gains on circuits with long synchronous idle periods (GHZ-wait 0.838 → 0.871). On IBM hardware (ibm_marrakesh, ibm_fez, ibm_kingston), staggered DD beat uniform DD and IBM's built-in Runtime DD in the crosstalk test; the gap is small on marrakesh and large on fez and kingston. Caveats: ZNE numbers above 1 are not physical, hardware baselines drift between sessions, and we compare configurations only within one run.
+**Why this works:** It is schedule-aware: pulses go only where a window is long enough to pay for them and where a neighbour's timing makes staggering useful.
+
+**Results.** *Simulation* (noisy device model, 6 workloads): auto-DD cuts mean infidelity from 0.281 (no DD) to 0.129, a 54 % reduction (Qiskit's DD: 0.142), with the largest gains on circuits with long synchronous idle periods (GHZ-wait 0.674 → 0.871). *Real IBM Heron r2 hardware*, spectator test (four idle qubits next to a busy CZ pair; mean ⟨X⟩ of the idle qubits, ideal = 1; interleaved repeats): staggered DD was the best configuration on all three devices.
+
+| Device | No DD | Qiskit PadDD | IBM Runtime DD | Our DD uniform | **Our DD staggered** |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| ibm_fez | −0.05 | 0.67 | 0.63 | 0.67 | **0.78** |
+| ibm_kingston | 0.28 | 0.79 | 0.80 | 0.79 | **0.82** |
+| ibm_marrakesh | 0.07 | 0.62 | 0.62 | 0.64 | **0.67** |
+
+In a separate crosstalk test on ibm_fez (single run) staggered DD reached 0.82 against 0.72 for uniform DD.
+
+**Honest caveats.** The margin over IBM's own Runtime DD is modest (small on ibm_kingston and ibm_marrakesh). Our DD plus ZNE did not beat Runtime's ZNE alone on ibm_marrakesh (0.74 vs 0.80). Denser DD in crosstalk-idle windows (about 190 pulses) *reduced* fidelity on ibm_marrakesh, so the default spacing is kept (`results/spectator_marrakesh_p64*.json`). Busy-qubit fidelity is dominated by CZ errors and is not improved. Simulated ZNE values above 1 are not physical. Hardware baselines drift between sessions, so configurations are compared only within one run, on the free plan with a few repeats per device. We claim no computational speed-up: the benefit is fidelity of idle-heavy circuits on today's devices.
 
 ---
 
@@ -115,7 +130,8 @@ It classifies each idle window (idle-idle vs crosstalk-idle), staggers DD phases
 | Quantum SDK | Qiskit `>=2.1`, Qiskit Aer, Qiskit IBM Runtime (EstimatorV2) |
 | Optimisation | Cost-function search over DD candidates (CPMG / Uhrig, even pulse counts) |
 | Simulation | Exact timeline density-matrix simulator; AerSimulator for offline hardware dry runs |
-| Dashboard | Streamlit, Plotly |
+| Dashboard | Streamlit, Plotly (hosted on Streamlit Community Cloud) |
+| Testing | pytest (39 tests) |
 | Environment | VS Code, `venv` |
 | Version control | Git + GitHub |
 
@@ -137,13 +153,17 @@ vtu-hc-qubitcrew/
 │   ├── mitigation.py      # CX folding + extrapolators
 │   ├── workloads.py       # GHZ / QAOA / VQE-TFIM / mirror workloads
 │   ├── pipeline.py        # Compiled / Config / evaluate / auto-DD selection
+│   ├── passes.py          # IdleAwareDD: drop-in Qiskit transpiler pass
 │   └── experiments.py     # reproduces every table and plot
 ├── app/app.py             # Streamlit dashboard
+├── site/                  # static project website
+├── Deployed_Project_Link.md   # live app URL
+├── YouTube_Demo_Link.md       # demo video link
 ├── scripts/               # real-hardware runs (run_hardware, run_crosstalk_hw, run_spectator_hw)
 ├── results/               # CSV, JSON, PNG (committed so the dashboard works offline)
 ├── tests/                 # pytest suite
 │   └── test_ddpipe.py
-└── docs/                  # longer notes (README_long.md)
+└── docs/                  # presentation (.pptx) and longer notes
 ```
 
 ---
@@ -191,13 +211,13 @@ Real hardware (save credentials once with `QiskitRuntimeService.save_account(...
 ```bash
 python scripts/run_hardware.py --fake --n 4                                   # free offline dry run
 python scripts/run_crosstalk_hw.py --backend ibm_fez --n 4 --wait-ns 10000 --extended
-python scripts/run_spectator_hw.py --backend ibm_fez --pairs 150
+python scripts/run_spectator_hw.py --backend ibm_fez --pairs 150 --repeats 3   # spectator test (also ibm_kingston, ibm_marrakesh)
 ```
 
 ### 5. Run the tests
 
 ```bash
-python -m pytest -q
+python -m pytest -q                      # 39 tests
 ```
 
 ---
@@ -275,11 +295,11 @@ git pull --rebase       # update your branch on top of main
 
 - [ ] Repository created and **public**
 - [ ] All team members added as **collaborators** and invitations accepted
-- [ ] `README.md` updated with project details, problem statement and solution
-- [ ] Team members listed under [Team Members](#-team-members-github-ids)
-- [ ] `requirements.txt` committed and project runs from a clean clone
-- [ ] Code pushed to `main` and the latest `main` builds successfully
-- [ ] Notebooks committed with **cleared outputs** (or use `nbstrip`)
+- [x] `README.md` updated with project details, problem statement and solution
+- [x] Team members listed under [Team Members](#-team-members-github-ids)
+- [x] `requirements.txt` committed and project runs from a clean clone
+- [x] Code pushed to `main` and the latest `main` builds successfully
+- [x] Notebooks committed with **cleared outputs** (or use `nbstrip`)
 - [ ] `README` includes a demo screenshot / video link
 - [ ] Short project summary submitted on the hackathon portal
 
