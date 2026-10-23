@@ -19,8 +19,8 @@
 | **Organisation** | [vtu-qiskit-fall-fest-2026](https://github.com/vtu-qiskit-fall-fest-2026) |
 | **Event** | VTU-QFF Hackathon — VTU-Qiskit Fall Fest 2026 |
 | **Live demo** | [qubitcrew-dd.streamlit.app](https://qubitcrew-dd.streamlit.app/) |
-| **Demo video** | See [YouTube_Demo_Link.md](YouTube_Demo_Link.md) |
-| **Presentation** | [docs/QubitCrew_VTU-QFF-HC-0184.pptx](docs/QubitCrew_VTU-QFF-HC-0184.pptx) |
+| **Demo video** | [Watch on YouTube](https://youtu.be/cA8_7WGutxc) |
+| **Presentation** | [docs/VTU-QFF-HC-0184.pdf](docs/VTU-QFF-HC-0184.pdf) |
 
 </div>
 
@@ -163,7 +163,7 @@ vtu-hc-qubitcrew/
 ├── results/               # CSV, JSON, PNG (committed so the dashboard works offline)
 ├── tests/                 # pytest suite
 │   └── test_ddpipe.py
-└── docs/                  # presentation (.pptx) and longer notes
+└── docs/                  # presentation (PDF) and longer notes
 ```
 
 ---
